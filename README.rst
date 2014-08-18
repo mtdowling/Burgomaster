@@ -39,7 +39,7 @@ First, create the following Makefile in your project's root directory:
 
     burgomaster:
         mkdir -p build/artifacts
-        curl -s https://raw.githubusercontent.com/mtdowling/Burgomaster/master/src/Packager.php > build/artifacts/Burgomaster.php
+        curl -s https://raw.githubusercontent.com/mtdowling/Burgomaster/0.0.1/src/Burgomaster.php > build/artifacts/Burgomaster.php
 
 .. note::
 

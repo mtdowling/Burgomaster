@@ -1,5 +1,4 @@
 <?php
-namespace Burgomaster;
 
 /**
  * Packages the zip and phar file using a staging directory.
@@ -7,7 +6,7 @@ namespace Burgomaster;
  * @license MIT, Michael Dowling https://github.com/mtdowling
  * @license https://github.com/mtdowling/Burgomaster/LICENSE
  */
-class Packager
+class Burgomaster
 {
     /** @var string Base staging directory of the project */
     public $stageDir;
@@ -19,8 +18,11 @@ class Packager
     private $sections = [];
 
     /**
-     * @param string $stageDir    Staging base directory
-     * @param string $projectRoot Root directory of the project
+     * @param string $stageDir    Staging base directory where your packaging
+     *                            takes place. This folder will be created for
+     *                            you if it does not exist. If it exists, it
+     *                            will be deleted and recreated to start fresh.
+     * @param string $projectRoot Root directory of the project.
      *
      * @throws \InvalidArgumentException
      * @throws \RuntimeException
@@ -74,6 +76,10 @@ class Packager
     /**
      * Call this method when starting a specific section of the packager.
      *
+     * This makes the debug messages used in your script more meaningful and
+     * adds context when things go wrong. Be sure to call endSection() when
+     * you have finished a section of your packaging script.
+     *
      * @param string $section Part of the packager that is running
      */
     public function startSection($section)
@@ -94,7 +100,7 @@ class Packager
     }
 
     /**
-     * Prints a debug message to STDERR
+     * Prints a debug message to STDERR bound to the current section.
      *
      * @param string $message Message to echo to STDERR
      */
@@ -154,10 +160,14 @@ class Packager
     function recursiveCopy(
         $sourceDir,
         $destDir,
-        $extensions = ['php', 'pem']
+        $extensions = ['php']
     ) {
         if (!realpath($sourceDir)) {
             throw new \InvalidArgumentException("$sourceDir not found");
+        }
+
+        if (!$extensions) {
+            throw new \InvalidArgumentException('$extensions is empty!');
         }
 
         $sourceDir = realpath($sourceDir);
@@ -187,11 +197,11 @@ class Packager
     }
 
     /**
-     * Execute a command and throw an exception if the return code is not 0
+     * Execute a command and throw an exception if the return code is not 0.
      *
      * @param string $command Command to execute
      *
-     * @return string Returns the output as a string
+     * @return string Returns the output of the command as a string
      * @throws \RuntimeException on error.
      */
     public function exec($command)
@@ -212,7 +222,8 @@ class Packager
      * Creates a class-map autoloader to the staging directory in a file
      * named autoloader.php
      *
-     * @param array $files Files to explicitly require in the autoloader
+     * @param array $files Files to explicitly require in the autoloader. This
+     *                     is similar to Composer's "files" "autoload" section.
      * @throws \RuntimeException if the file cannot be written
      */
     function createAutoloader($files = [])
@@ -273,7 +284,13 @@ EOT
     }
 
     /**
-     * Creates a default stub for the phar.
+     * Creates a default stub for the phar that includeds the generated
+     * autoloader.
+     *
+     * This phar also registers a constant that can be used to check if you
+     * are running the phar. The constant is the basename of the $dest variable
+     * without the extension, with "_PHAR" appended, then converted to all
+     * caps (e.g., "/foo/guzzle.phar" gets a contant defined as GUZZLE_PHAR.
      *
      * @param $dest
      *
@@ -284,9 +301,9 @@ EOT
         $this->startSection('stub');
         $this->debug("Creating phar stub at $dest");
         $alias = basename($dest);
-        $project = str_replace('.phar', '', strtoupper($alias));
+        $constName = str_replace('.phar', '', strtoupper($alias)) . '_PHAR';
         $stub  = "<?php\n";
-        $stub .= "define('$project', true);\n";
+        $stub .= "define('$constName', true);\n";
         $stub .= "require 'phar://$alias/autoloader.php';\n";
         $stub .= "__HALT_COMPILER();\n";
         $this->endSection();
@@ -297,11 +314,14 @@ EOT
     /**
      * Creates a phar that automatically registers an autoloader.
      *
-     * @param string $dest Where to save the file. The basename of the file is
-     *                     also used as the alias name in the phar
-     *                     (e.g., /path/to/guzzle.phar => guzzle.phar).
-     * @param null   $stub The path to the phar stub file. Pass or leave null
-     *                     to automatically have one created for you.
+     * Call this only after your staging directory is built.
+     *
+     * @param string $dest Where to save the file. The basename of the file
+     *     is also used as the alias name in the phar
+     *     (e.g., /path/to/guzzle.phar => guzzle.phar).
+     * @param string|bool|null $stub The path to the phar stub file. Pass or
+     *      leave null to automatically have one created for you. Pass false
+     *      to no use a stub in the generated phar.
      */
     public function createPhar($dest, $stub = null)
     {
@@ -310,18 +330,20 @@ EOT
         $phar = new \Phar($dest, 0, basename($dest));
         $phar->buildFromDirectory($this->stageDir);
 
-        if (!$stub) {
-            $stub = $this->createStub($dest);
+        if ($stub !== false) {
+            if (!$stub) {
+                $stub = $this->createStub($dest);
+            }
+            $phar->setStub($stub);
         }
-
-        $phar->setStub($stub);
         $this->debug("Created phar at $dest");
         $this->endSection();
     }
 
     /**
-     * Creates a zip file containing the staging files and a generated
-     * classmap autoloader.
+     * Creates a zip file containing the staged files of your project.
+     *
+     * Call this only after your staging directory is built.
      *
      * @param string $dest Where to save the zip file
      */

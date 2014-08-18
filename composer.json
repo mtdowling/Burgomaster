@@ -1,0 +1,19 @@
+{
+    "name": "mtdowling/burgomaster",
+    "description": "Packages up PHP packages into zips and phars",
+    "keywords": ["zip", "phar"],
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Michael Dowling",
+            "email": "mtdowling@gmail.com",
+            "homepage": "https://github.com/mtdowling"
+        }
+    ],
+    "require": {
+        "php": ">=5.4.0"
+    },
+    "autoload": {
+        "files": ["src/Packager.php"]
+    }
+}

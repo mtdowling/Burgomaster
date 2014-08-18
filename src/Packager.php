@@ -162,8 +162,8 @@ class Packager
 
         $sourceDir = realpath($sourceDir);
         $exts = array_fill_keys($extensions, true);
-        $iter = new RecursiveDirectoryIterator($sourceDir);
-        $iter = new RecursiveIteratorIterator($iter);
+        $iter = new \RecursiveDirectoryIterator($sourceDir);
+        $iter = new \RecursiveIteratorIterator($iter);
         $total = 0;
 
         $this->startSection('copy');
@@ -218,8 +218,8 @@ class Packager
     function createAutoloader($files = [])
     {
         $sourceDir = realpath($this->stageDir);
-        $iter = new RecursiveDirectoryIterator($sourceDir);
-        $iter = new RecursiveIteratorIterator($iter);
+        $iter = new \RecursiveDirectoryIterator($sourceDir);
+        $iter = new \RecursiveIteratorIterator($iter);
 
         $this->startSection('autoloader');
         $this->debug('Creating classmap autoloader');
@@ -307,7 +307,7 @@ EOT
     {
         $this->startSection('phar');
         $this->debug("Creating phar file at $dest");
-        $phar = new Phar($dest, 0, basename($dest));
+        $phar = new \Phar($dest, 0, basename($dest));
         $phar->buildFromDirectory($this->stageDir);
 
         if (!$stub) {

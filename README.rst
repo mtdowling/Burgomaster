@@ -44,7 +44,7 @@ First, create the following Makefile in your project's root directory:
 .. note::
 
     You can substitute the above URL to use a different tag than ``0.0.1``.
-    Look at `Burgomaster's releases <https://github.com/mtdowling/Burgomaster/releases`_>`_
+    Look at `Burgomaster's releases <https://github.com/mtdowling/Burgomaster/releases>`_
     for a list of available tags.
 
 Create a packager.php script
@@ -86,8 +86,8 @@ taken that just uses Burgomaster to help with some common tasks like creating
 a staging directory, building an autoloader, creating a zip, and creating a
 phar.
 
-make packager
-~~~~~~~~~~~~~
+make package
+~~~~~~~~~~~~
 
 Now that you've made your ``packager.php`` script, just run the ``packge``
 Makefile target from the command line.

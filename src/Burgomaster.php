@@ -15,7 +15,7 @@ class Burgomaster
     public $projectRoot;
 
     /** @var array stack of sections */
-    private $sections = [];
+    private $sections = array();
 
     /**
      * @param string $stageDir    Staging base directory where your packaging
@@ -160,7 +160,7 @@ class Burgomaster
     function recursiveCopy(
         $sourceDir,
         $destDir,
-        $extensions = ['php']
+        $extensions = array('php')
     ) {
         if (!realpath($sourceDir)) {
             throw new \InvalidArgumentException("$sourceDir not found");
@@ -224,10 +224,10 @@ class Burgomaster
      *
      * @param array $files Files to explicitly require in the autoloader. This
      *                     is similar to Composer's "files" "autoload" section.
+     * @param string $filename Name of the autoloader file.
      * @throws \RuntimeException if the file cannot be written
      */
-    function createAutoloader($files = [])
-    {
+    function createAutoloader($files = array(), $filename = 'autoloader.php') {
         $sourceDir = realpath($this->stageDir);
         $iter = new \RecursiveDirectoryIterator($sourceDir);
         $iter = new \RecursiveIteratorIterator($iter);
@@ -236,18 +236,26 @@ class Burgomaster
         $this->debug('Creating classmap autoloader');
         $this->debug("Collecting valid PHP files from {$this->stageDir}");
 
-        $classMap = [];
+        $classMap = array();
         foreach ($iter as $file) {
             if ($file->getExtension() == 'php') {
                 $location = str_replace($this->stageDir . '/', '', (string) $file);
                 $className = str_replace('/', '\\', $location);
                 $className = substr($className, 0, -4);
+
+                // Remove "src\" or "lib\"
+                if (strpos($className, 'src\\') === 0
+                    || strpos($className, 'lib\\') === 0
+                ) {
+                    $className = substr($className, 4);
+                }
+
                 $classMap[$className] = "__DIR__ . '/$location'";
                 $this->debug("Found $className");
             }
         }
 
-        $destFile = $this->stageDir . '/autoloader.php';
+        $destFile = $this->stageDir . '/' . $filename;
         $this->debug("Writing autoloader to {$destFile}");
 
         if (!($h = fopen($destFile, 'w'))) {
@@ -256,15 +264,15 @@ class Burgomaster
 
         $this->debug('Writing classmap files');
         fwrite($h, "<?php\n\n");
-        fwrite($h, "\$mapping = [\n");
+        fwrite($h, "\$mapping = array(\n");
         foreach ($classMap as $c => $f) {
             fwrite($h, "    '$c' => $f,\n");
         }
-        fwrite($h, "];\n\n");
+        fwrite($h, ");\n\n");
         fwrite($h, <<<EOT
 spl_autoload_register(function (\$class) use (\$mapping) {
     if (isset(\$mapping[\$class])) {
-        include \$mapping[\$class];
+        require \$mapping[\$class];
     }
 }, true);
 
@@ -293,18 +301,20 @@ EOT
      * caps (e.g., "/foo/guzzle.phar" gets a contant defined as GUZZLE_PHAR.
      *
      * @param $dest
+     * @param string $autoloaderFilename Name of the autoloader file.
      *
      * @return string
      */
-    private function createStub($dest)
+    private function createStub($dest, $autoloaderFilename = 'autoloader.php')
     {
         $this->startSection('stub');
         $this->debug("Creating phar stub at $dest");
+
         $alias = basename($dest);
         $constName = str_replace('.phar', '', strtoupper($alias)) . '_PHAR';
         $stub  = "<?php\n";
         $stub .= "define('$constName', true);\n";
-        $stub .= "require 'phar://$alias/autoloader.php';\n";
+        $stub .= "require 'phar://$alias/{$autoloaderFilename}';\n";
         $stub .= "__HALT_COMPILER();\n";
         $this->endSection();
 
@@ -322,20 +332,26 @@ EOT
      * @param string|bool|null $stub The path to the phar stub file. Pass or
      *      leave null to automatically have one created for you. Pass false
      *      to no use a stub in the generated phar.
+     * @param string $autoloaderFilename Name of the autolaoder filename.
      */
-    public function createPhar($dest, $stub = null)
-    {
+    public function createPhar(
+        $dest,
+        $stub = null,
+        $autoloaderFilename = 'autoloader.php'
+    ) {
         $this->startSection('phar');
         $this->debug("Creating phar file at $dest");
+        $this->createDirIfNeeded(dirname($dest));
         $phar = new \Phar($dest, 0, basename($dest));
         $phar->buildFromDirectory($this->stageDir);
 
         if ($stub !== false) {
             if (!$stub) {
-                $stub = $this->createStub($dest);
+                $stub = $this->createStub($dest, $autoloaderFilename);
             }
             $phar->setStub($stub);
         }
+
         $this->debug("Created phar at $dest");
         $this->endSection();
     }
@@ -351,10 +367,18 @@ EOT
     {
         $this->startSection('zip');
         $this->debug("Creating a zip file at $dest");
+        $this->createDirIfNeeded(dirname($dest));
         chdir($this->stageDir);
         $this->exec("zip -r $dest ./");
         $this->debug("  > Created at $dest");
         chdir(__DIR__);
         $this->endSection();
+    }
+
+    private function createDirIfNeeded($dir)
+    {
+        if (!is_dir($dir) && !mkdir($dir, 0755, true)) {
+            throw new \RuntimeException("Could not create dir: $dir");
+        }
     }
 }

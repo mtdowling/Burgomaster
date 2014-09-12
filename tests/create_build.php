@@ -6,7 +6,7 @@ $stageDirectory = sys_get_temp_dir() . '/bstage';
 $projectRoot = __DIR__ . '/../';
 $packager = new \Burgomaster($stageDirectory, $projectRoot);
 
-foreach (['README.rst', 'LICENSE'] as $file) {
+foreach (array('README.rst', 'LICENSE') as $file) {
     $packager->deepCopy($file, $file);
 }
 

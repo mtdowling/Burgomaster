@@ -27,7 +27,7 @@ Get Burgomaster
 ~~~~~~~~~~~~~~~
 
 Before running your packaging script, you'll need a copy of Burgomaster. This
-can be done using compsoser (mtdowling/burgomaster) or just creating a Makefile
+can be done using composer (mtdowling/burgomaster) or just creating a Makefile
 that downloads the Burgomaster.php script.
 
 First, create the following Makefile in your project's root directory:
